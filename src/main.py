@@ -13,6 +13,9 @@ DOWN = arcade.key.DOWN
 LEFT = arcade.key.LEFT
 SPACE = arcade.key.SPACE
 
+SPRITE_TILE_SIZE = 64
+APPLE_SPRITE = (0 * SPRITE_TILE_SIZE, 3 * SPRITE_TILE_SIZE)  # col=0, row=3
+
 OPPOSITE = {
     UP: DOWN,
     DOWN: UP,
@@ -26,21 +29,18 @@ class Apple():
         self.tile_size = tile_size
         self.window_dimensions = window_dimensions
 
-        self.size = tile_size
-
-        sprite_orig_size = 100
-        # this is how much sprite is misaligned on Y axis when shown by original size
-        sprite_offset_y = 36
-        # magic number to push sprite upwards, otherwise it's a bit off by default
-        self.offset_y = sprite_offset_y * tile_size / sprite_orig_size
-
         x,  y = self.new_position(snake_placement)
+        sprite_x, sprite_y = APPLE_SPRITE
 
         self.sprite = arcade.Sprite(
-            ":resources:images/enemies/mouse.png",
-            tile_size / sprite_orig_size,
+            'assets/sprites/snake-graphics.png',
+            scale=tile_size / SPRITE_TILE_SIZE,
+            image_x=sprite_x,
+            image_y=sprite_y,
+            image_width=SPRITE_TILE_SIZE,
+            image_height=SPRITE_TILE_SIZE,
             center_x=x,
-            center_y=y + self.offset_y
+            center_y=y
         )
 
     def draw(self):
@@ -61,26 +61,22 @@ class Apple():
                 self.tile_size
             )
 
-            overlaps = False
-
             for s_x, s_y in snake_placement:
                 if s_x == x and s_y == y:
-                    overlaps = True
                     break
-
-            if not overlaps:
+            else:
                 return x, y
 
     def respawn(self, snake_placement):
         x, y = self.new_position(snake_placement)
 
         self.sprite.center_x = x
-        self.sprite.center_y = y + self.offset_y  # keep offset in mind
+        self.sprite.center_y = y
 
     @property
     def position(self):
         # subtract offset since we only need it when displaying
-        return self.sprite.center_x, self.sprite.center_y - self.offset_y
+        return self.sprite.center_x, self.sprite.center_y
 
 
 class Snake():
@@ -101,6 +97,17 @@ class Snake():
             ((width / 2) - (tile_size / 2),
              (height / 2) - (tile_size / 2))
         ]
+
+        # self.sprite = arcade.Sprite(
+        #     'assets/sprites/snake-graphics.png',
+        #     scale=tile_size / SPRITE_TILE_SIZE,
+        #     image_x=0,
+        #     image_y=SPRITE_TILE_SIZE,
+        #     image_width=SPRITE_TILE_SIZE,
+        #     image_height=SPRITE_TILE_SIZE,
+        #     center_x=(width / 2) - (tile_size / 2),
+        #     center_y=(height / 2) - (tile_size / 2),
+        # )
 
     def reset(self):
         self._direction = None
@@ -151,6 +158,8 @@ class Snake():
             arcade.draw_point(
                 x, y, arcade.color.BLACK, self.size
             )
+
+        # self.sprite.draw()
 
     def move(self):
         x, y = self.body[-1]  # head position
