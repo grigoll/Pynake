@@ -15,13 +15,24 @@ SPACE = arcade.key.SPACE
 
 SPRITE_TILE_SIZE = 64
 APPLE_SPRITE = (0 * SPRITE_TILE_SIZE, 3 * SPRITE_TILE_SIZE)  # col=0, row=3
-
-OPPOSITE = {
-    UP: DOWN,
-    DOWN: UP,
-    LEFT: RIGHT,
-    RIGHT: LEFT,
+SNAKE_HEAD = {
+    UP: (3 * SPRITE_TILE_SIZE, 0 * SPRITE_TILE_SIZE),
+    RIGHT: (4 * SPRITE_TILE_SIZE, 0 * SPRITE_TILE_SIZE),
+    DOWN: (4 * SPRITE_TILE_SIZE, 1 * SPRITE_TILE_SIZE),
+    LEFT: (3 * SPRITE_TILE_SIZE, 1 * SPRITE_TILE_SIZE),
 }
+SNAKE_TAIL = {
+    UP: (3 * SPRITE_TILE_SIZE, 2 * SPRITE_TILE_SIZE),
+    RIGHT: (4 * SPRITE_TILE_SIZE, 2 * SPRITE_TILE_SIZE),
+    DOWN: (4 * SPRITE_TILE_SIZE, 3 * SPRITE_TILE_SIZE),
+    LEFT: (3 * SPRITE_TILE_SIZE, 3 * SPRITE_TILE_SIZE),
+}
+HORIZ_STRAIGHT = (1 * SPRITE_TILE_SIZE, 0 * SPRITE_TILE_SIZE)
+VERT_STRAIGHT = (2 * SPRITE_TILE_SIZE, 1 * SPRITE_TILE_SIZE)
+DOWN_RIGHT = (0 * SPRITE_TILE_SIZE, 0 * SPRITE_TILE_SIZE)
+UP_RIGHT = (0 * SPRITE_TILE_SIZE, 1 * SPRITE_TILE_SIZE)
+DOWN_LEFT = (2 * SPRITE_TILE_SIZE, 0 * SPRITE_TILE_SIZE)
+UP_LEFT = (2 * SPRITE_TILE_SIZE, 2 * SPRITE_TILE_SIZE)
 
 
 class Apple():
@@ -87,39 +98,123 @@ class Snake():
         self.size = tile_size
         self.speed = tile_size
 
-        self._direction = None
+        self._direction = RIGHT
         self.direction_locked = False
 
+        self.init_body()
+
+    def init_body(self):
         width, height = self.window_dimensions
 
         # list of tuples (x, y)
-        self.body = [
-            ((width / 2) - (tile_size / 2),
-             (height / 2) - (tile_size / 2))
-        ]
+        self.body = list()
 
-        # self.sprite = arcade.Sprite(
-        #     'assets/sprites/snake-graphics.png',
-        #     scale=tile_size / SPRITE_TILE_SIZE,
-        #     image_x=0,
-        #     image_y=SPRITE_TILE_SIZE,
-        #     image_width=SPRITE_TILE_SIZE,
-        #     image_height=SPRITE_TILE_SIZE,
-        #     center_x=(width / 2) - (tile_size / 2),
-        #     center_y=(height / 2) - (tile_size / 2),
-        # )
+        x, y = ((width / 2) - (self.tile_size / 2),
+                (height / 2) - (self.tile_size / 2))
+
+        for i in range(3):
+            self.body.append((x, y))
+            x += self.tile_size
+
+        self.sync_sprites()
+
+    def sync_sprites(self):
+        self.sprites = arcade.SpriteList()
+        for i, (x, y) in enumerate(self.body):
+            if i == len(self.body) - 1:
+                img_x, img_y = SNAKE_HEAD[self.direction]
+
+            elif i == 0:
+                next_x, next_y = self.body[1]
+
+                if y < next_y:
+                    direction = UP
+                elif x < next_x:
+                    direction = RIGHT
+                elif y > next_y:
+                    direction = DOWN
+                elif x > next_x:
+                    direction = LEFT
+
+                img_x, img_y = SNAKE_TAIL[direction]
+
+            else:
+                prev_x, prev_y = self.body[i-1]
+                next_x, next_y = self.body[i+1]
+
+                if prev_y == y and y == next_y:
+                    direction = HORIZ_STRAIGHT
+                elif prev_x == x and x == next_x:
+                    direction = VERT_STRAIGHT
+                elif (x < next_x and y > prev_y) or (y > next_y and x < prev_x):
+                    direction = DOWN_RIGHT
+                elif (x > next_x and y > prev_y) or (y > next_y and x > prev_x):
+                    direction = DOWN_LEFT
+                elif (y < next_y and x < prev_x) or (x < next_x and y < prev_y):
+                    direction = UP_RIGHT
+                elif (y < next_y and x > prev_x) or (x > next_x and y < prev_y):
+                    direction = UP_LEFT
+
+                img_x, img_y = direction
+
+            self.sprites.append(arcade.Sprite(
+                'assets/sprites/snake-graphics.png',
+                scale=self.tile_size / SPRITE_TILE_SIZE,
+                image_x=img_x,
+                image_y=img_y,
+                image_width=SPRITE_TILE_SIZE,
+                image_height=SPRITE_TILE_SIZE,
+                center_x=x,
+                center_y=y,
+            ))
+
+    def draw(self):
+        self.sprites.draw()
+
+    def move(self, apple_position):
+        x, y = self.next_move()
+        apple_x, apple_y = apple_position
+        did_eat = True
+
+        # snake movement illusion
+        self.body.append((x, y))  # add new one at head
+
+        if (apple_x != x or apple_y != y):
+            self.body.pop(0)  # remove one from tail
+            did_eat = False
+
+        self.direction_locked = False
+        self.sync_sprites()
+
+        return did_eat
+
+    def next_move(self):
+        x, y = self.body[-1]  # head position
+
+        if self.direction == UP:
+            y += self.speed
+        elif self.direction == DOWN:
+            y -= self.speed
+        elif self.direction == LEFT:
+            x -= self.speed
+        else:
+            x += self.speed
+
+        return x, y
+
+    def collides_self(self):
+        X, Y = self.next_move()
+
+        for x, y in self.body:
+            if x == X and y == Y:
+                return True
+
+        return False
 
     def reset(self):
-        self._direction = None
+        self._direction = RIGHT
         self.direction_locked = False
-
-        width, height = self.window_dimensions
-
-        # list of tuples (x, y)
-        self.body = [
-            ((width / 2) - (self.tile_size / 2),
-             (height / 2) - (self.tile_size / 2))
-        ]
+        self.init_body()
 
     @property
     def direction(self):
@@ -153,65 +248,6 @@ class Snake():
     def placement(self):
         return self.body[:]
 
-    def draw(self):
-        for x, y in self.body:
-            arcade.draw_point(
-                x, y, arcade.color.BLACK, self.size
-            )
-
-        # self.sprite.draw()
-
-    def move(self):
-        x, y = self.body[-1]  # head position
-
-        if self.direction == UP:
-            y += self.speed
-        elif self.direction == DOWN:
-            y -= self.speed
-        elif self.direction == LEFT:
-            x -= self.speed
-        else:
-            x += self.speed
-
-        # snake movement illusion
-        self.body.append((x, y))  # add new one at head
-        self.body.pop(0)  # remove one from tail
-
-        self.direction_locked = False
-
-    def did_eat(self, apple_position):
-        X, Y = self.body[-1]  # head position
-        x, y = apple_position
-
-        if X == x and Y == y:
-            self.body.append((x, y))
-            return True
-
-        return False
-
-    def next_move(self):
-        x, y = self.body[-1]  # head position
-
-        if self.direction == UP:
-            y += self.speed
-        elif self.direction == DOWN:
-            y -= self.speed
-        elif self.direction == LEFT:
-            x -= self.speed
-        else:
-            x += self.speed
-
-        return x, y
-
-    def collides_self(self):
-        X, Y = self.next_move()
-
-        for x, y in self.body:
-            if x == X and y == Y:
-                return True
-
-        return False
-
 
 class Pynake(arcade.Window):
     def __init__(self, width, height, tile_size):
@@ -238,7 +274,7 @@ class Pynake(arcade.Window):
 
     def setup(self):
         # Create your sprites and sprite lists here
-        self.set_update_rate(1 / 5)
+        self.set_update_rate(1 / 1)
 
         return self
 
@@ -272,14 +308,19 @@ class Pynake(arcade.Window):
             self.game_over = True
             return
 
-        self.snake.move()
+        did_eat = self.snake.move(self.apple.position)
 
-        if self.snake.did_eat(self.apple.position):
+        if did_eat:
             self.apple.respawn(self.snake.placement)
 
     def on_key_press(self, key, key_modifiers):
+        if self.game_over:
+            if key == SPACE:
+                self.restart()
+            return
+
         # when first starting, game is paused
-        if (not self.game_started and key in [UP, DOWN, LEFT, RIGHT]):
+        if not self.game_started and key in [UP, DOWN, LEFT, RIGHT]:
             self.game_started = True
 
         if (
@@ -289,9 +330,6 @@ class Pynake(arcade.Window):
             key == RIGHT
         ):
             self.snake.direction = key
-
-        if self.game_over and key == SPACE:
-            self.restart()
 
     def hits_border(self):
         x, y = self.snake.next_move()
@@ -319,6 +357,16 @@ class Pynake(arcade.Window):
 
             color = (arcade.color.ANDROID_GREEN if color != arcade.color.ANDROID_GREEN
                      else arcade.color.APPLE_GREEN)
+
+        # x, y = self.apple.position
+        # sprite = arcade.Sprite(
+        #     ':resources:images/tiles/grass_sprout.png',
+        #     self.tile_size / 128,
+        #     center_x=x + self.tile_size,
+        #     center_y=y + self.tile_size,
+        # )
+
+        # sprite.draw()
 
     def draw_game_over(self):
         arcade.draw_text(
