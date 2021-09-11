@@ -26,9 +26,9 @@ class Apple():
         self.sprite.draw()
 
     def new_position(self, snake_placement):
-        while True:
-            width, height = self.window_dimensions
+        width, height = self.window_dimensions
 
+        while True:
             x = randrange(
                 self.tile_size / 2,
                 width - (self.tile_size / 2),
@@ -54,5 +54,4 @@ class Apple():
 
     @property
     def position(self):
-        # subtract offset since we only need it when displaying
         return self.sprite.center_x, self.sprite.center_y

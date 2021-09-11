@@ -1,4 +1,3 @@
-import arcade
 import constants
 from game import Pynake
 

@@ -21,8 +21,7 @@ class Snake():
     def init_body(self):
         width, height = self.window_dimensions
 
-        # list of tuples (x, y)
-        self.body = list()
+        self.body: list[tuple] = list()
 
         x, y = ((width / 2) - (self.tile_size / 2),
                 (height / 2) - (self.tile_size / 2))

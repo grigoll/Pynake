@@ -57,7 +57,7 @@ class Pynake(arcade.Window):
         if not self.game_started:
             self.draw_start_guide()
 
-    def on_update(self, delta_time):
+    def on_update(self):
         if not self.game_started or self.game_over:
             return
 
@@ -71,7 +71,7 @@ class Pynake(arcade.Window):
             self.score += 10
             self.apple.respawn(self.snake.placement)
 
-    def on_key_press(self, key, key_modifiers):
+    def on_key_press(self, key):
         if self.game_over:
             if key == constants.SPACE:
                 self.restart()
